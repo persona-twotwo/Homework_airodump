@@ -22,6 +22,8 @@ make
 ## 기본 실행
 ```
 sudo ./airodump <interface>
+-t : 테스트 모드 - 출력 파일 생성
+-s <seconds> : <seconds>초 후 종료
 ```
 
 예시
