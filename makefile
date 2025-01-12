@@ -36,6 +36,7 @@ test-replay-file:
 
 test-clean:
 	sudo rm airodump_output.txt
+	make test-setup-clean
 
 .PHONY: all clean run test test-setup test-replay test-clean
 

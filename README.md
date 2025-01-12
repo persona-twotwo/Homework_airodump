@@ -32,5 +32,22 @@ sudo ./airodump mon0
 ## 테스트 모드
 - 테스트 모드는 출력 파일을 생성하고, 테스트 파일을 재생하여 테스트를 진행합니다.
 ```
-make test
+make test-setup
+# 테스트를 위한 가상 무선 인터페이스 생성
+```
+```
+make test-setup-clean
+# 무선 인터페이스 삭제
+```
+```
+make test-replay
+# 파일 재생을 통한 테스트
+```
+```
+make test-replay-file
+# 파일 재생을 통한 테스트 (파일로 출력)
+```
+```
+make test-clean
+# 테스트 환경 정리
 ```
