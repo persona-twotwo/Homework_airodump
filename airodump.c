@@ -20,9 +20,9 @@ typedef struct _ap_info {
     int beacon_count;
     int data_count;
     int channel;
-    int pwr;            // RSSI값 (Radiotap Header에서 추출)
-    char enc_type[8];   // "WPA2", "WPA", "WEP", "OPN" 등
-    int used;           // 해당 구조체 사용 여부
+    int pwr;
+    char enc_type[8];
+    int used;
 } ap_info_t;
 
 // 전역 AP 정보 테이블
@@ -42,10 +42,6 @@ static int g_test_mode = 0;         // 테스트 모드 플래그
 int g_time_out = 0;
 static pcap_t *g_handle = NULL;  // pcap 핸들을 전역 변수로 선언
 
-
-// ----------------------------------------------------------------------------
-// 헬퍼 함수
-// ----------------------------------------------------------------------------
 
 static void print_mac(const unsigned char *mac, char *buf, size_t buf_size) {
     snprintf(buf, buf_size, "%02X:%02X:%02X:%02X:%02X:%02X",
@@ -116,27 +112,18 @@ static int update_ap_info(const unsigned char *bssid, const char *essid,
 static void parse_packet(const unsigned char *packet, struct pcap_pkthdr header) {
     // 1) Radiotap Header에서 길이 추출
     if (header.caplen < 8) {
-        return; // radiotap header가 최소 크기도 안 될 경우
     }
     
     uint16_t radiotap_len = packet[2] | (packet[3] << 8);
     if (radiotap_len > header.caplen) {
-        return; // 잘못된 radiotap 길이
+        return;
     }
 
-    // (예시) RSSI(PWR) 추출 로직(간단화된 예시)
-    // 실제로는 radiotap header bitmap을 파악해서 신호 강도 필드를 찾아야 함
-    int rssi = 0; 
-    // radiotap_len 이후에 존재하는 필드들 중에 신호 강도를 찾는 과정 필요
-    // 여기서는 예시로 rssi를 고정값으로 처리하거나,
-    // 실제 구현 시 radiotap 헤더를 모두 파싱해야 함
-    rssi = -30;  // 예시로 고정
-
-    // 2) 802.11 헤더 시작 위치
+    int rssi = -30; 
     const unsigned char *ieee80211_hdr = packet + radiotap_len;
     int ieee80211_hdr_len = header.caplen - radiotap_len;
     if (ieee80211_hdr_len < 24) {
-        return; // 최소한의 802.11 MAC 헤더보다 작으면 return
+        return;
     }
 
     // Frame Control 필드
@@ -155,15 +142,11 @@ static void parse_packet(const unsigned char *packet, struct pcap_pkthdr header)
             return; 
         }
         
-        // Fixed parameter 12바이트 스킵 후 IE(Information Elements)부터 파싱
         const unsigned char *ie_ptr = body + 12;
         int ie_len = body_len - 12;
         char ssid_buf[MAX_ESSID_LEN+1] = {0};
         char enc_buf[8] = "OPN"; // 기본값(오픈)
 
-        // SSID IE는 ID 0
-        // 실제로는 한 프레임에 여러 IE가 있을 수 있으니 while 루프로 순회해야 함
-        // 여기서는 예시를 위해 간단히 파싱
         int idx = 0;
         while (idx + 2 < ie_len) {
             uint8_t tag_num = ie_ptr[idx];
@@ -175,14 +158,10 @@ static void parse_packet(const unsigned char *packet, struct pcap_pkthdr header)
 
             // SSID
             if (tag_num == 0) {
-                // ESSID
                 int copy_len = (tag_len > MAX_ESSID_LEN) ? MAX_ESSID_LEN : tag_len;
                 memcpy(ssid_buf, tag_data, copy_len);
                 ssid_buf[copy_len] = '\0';
             }
-            // RSN/WPA/WEP 등의 Encryption 체크는
-            // tag_num == 48(RSN), vendor specific 등으로 파악해야 함.
-            // 간단히 여기서는 WPA2라고 가정
             if (tag_num == 48) {
                 strncpy(enc_buf, "WPA2", sizeof(enc_buf));
             }
@@ -194,10 +173,8 @@ static void parse_packet(const unsigned char *packet, struct pcap_pkthdr header)
         update_ap_info(bssid_ptr, ssid_buf, rssi, enc_buf);
     }
     else if (type == 2) {
-        // Data frame일 경우 #Data 카운트 등 업데이트 가능
-        // BSSID 위치, To DS/From DS 비트, QoS 헤더 등에 따라 달라짐
-        // 예시에서는 단순히 SA / BSSID로 처리
-        // ...
+        // Data frame
+        
     }
 }
 
@@ -227,7 +204,7 @@ void *print_thread_func(void *arg) {
                          " BSSID              PWR   Beacons  #Data   ENC   ESSID\n");
         offset += snprintf(output_buffer + offset, sizeof(output_buffer) - offset,
                          "-----------------------------------------------------------------\n");
-
+ 
         pthread_mutex_lock(&g_ap_list_lock);
         for (int i = 0; i < MAX_AP; i++) {
             if (!g_ap_list[i].used) continue;
@@ -259,13 +236,13 @@ void *print_thread_func(void *arg) {
             fflush(g_output_file);
         }
 
-        usleep(POLLING_INTERVAL); // 0.5초 간격으로 갱신
+        usleep(POLLING_INTERVAL);
         if (g_time_out > 0) {
             g_time_out -= POLLING_INTERVAL;
             if (g_time_out <= 0) {
                 g_channel_hop = 0;
                 if (g_handle) {
-                    pcap_breakloop(g_handle);  // 메인 캡처 루프 종료
+                    pcap_breakloop(g_handle);
                 }
                 return NULL;
             }
@@ -275,7 +252,7 @@ void *print_thread_func(void *arg) {
 }
 
 // ----------------------------------------------------------------------------
-// 채널 호핑 쓰레드(가능하다면)
+// 채널 호핑 쓰레드
 // ----------------------------------------------------------------------------
 
 void *channel_hop_thread_func(void *arg) {
@@ -350,14 +327,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    // 2) 802.11 무선 헤더(링크 타입)가 맞는지 확인
-    int datalink = pcap_datalink(g_handle);
-    if (datalink != DLT_IEEE802_11_RADIO) {
-        fprintf(stderr, "[-] %s is not in Radiotap(IEEE802_11_RADIO) mode.\n", g_iface);
-        pcap_close(g_handle);
-        g_handle = NULL;
-        return -1;
-    }
 
     // 3) 출력 쓰레드 시작
     pthread_t print_thread;

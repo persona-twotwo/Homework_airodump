@@ -20,17 +20,18 @@ clean:
 
 test-setup:
 	sudo modprobe mac80211_hwsim [radios=2]
+	sudo gmon wlan1 mon0
 
 test-setup-clean:
 	sudo modprobe mac80211_hwsim -r
 
 test-replay:
-	sudo timeout 30 dot11replay -i wlan1 airodump.pcap &
-	sudo timeout 30 ./${TARGET} wlan1
+	sudo timeout 30 dot11replay -i mon0 airodump.pcap &
+	sudo timeout 30 ./${TARGET} mon0
 
 test-replay-file:
-	sudo timeout 30 dot11replay -i wlan1 airodump.pcap &
-	sudo timeout 30 ./${TARGET} wlan1 -t &
+	sudo timeout 30 dot11replay -i mon0 airodump.pcap &
+	sudo timeout 30 ./${TARGET} mon0 -t &
 	sleep 2 &
 	sudo timeout 30 tail -f airodump_output.txt
 
