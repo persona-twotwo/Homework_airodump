@@ -1,17 +1,17 @@
-CC = gcc
+CC = g++
 CFLAGS = -Wall -Wextra
 LIBS = -lpcap -lpthread
 
 TARGET = airodump
-SRCS = airodump.c
-OBJS = $(SRCS:.c=.o)
+SRCS = airodump.cpp
+OBJS = $(SRCS:.cpp=.o)
 
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) $(OBJS) -o $(TARGET) $(LIBS)
 
-%.o: %.c
+%.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
@@ -36,7 +36,7 @@ test-replay-file:
 	sudo timeout 30 tail -f airodump_output.txt
 
 test-clean:
-	sudo rm airodump_output.txt
+	sudo rm -f airodump_output.txt
 	make test-setup-clean
 
 .PHONY: all clean run test test-setup test-replay test-clean
